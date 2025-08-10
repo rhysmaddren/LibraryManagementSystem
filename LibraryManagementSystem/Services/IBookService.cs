@@ -1,4 +1,5 @@
-﻿using LibraryManagementSystem.Models;
+﻿using LibraryManagementSystem.DTOs;
+using LibraryManagementSystem.Models;
 
 namespace LibraryManagementSystem.Services
 {
@@ -23,18 +24,18 @@ namespace LibraryManagementSystem.Services
         /// <summary>
         /// Adds a new book.
         /// </summary>
-        /// <param name="book">The book to add.</param>
+        /// <param name="bookDTO">The book to add.</param>
         /// <returns>The newly added book, including its generated ID.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the ISBN is not unique.</exception>
-        Book Add(Book book);
+        Book Add(AddBookDTO bookDTO);
 
         /// <summary>
         /// Updates an existing book.
         /// </summary>
         /// <param name="id">The unique ID of the book to update.</param>
-        /// <param name="book">The updated book details.</param>
+        /// <param name="bookDTO">The updated book details.</param>
         /// <returns>The updated book, or null if not found.</returns>
-        Book? Update(int id, Book book);
+        Book? Update(int id, UpdateBookDTO bookDTO);
 
         /// <summary>
         /// Deletes a book.

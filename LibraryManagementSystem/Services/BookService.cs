@@ -1,4 +1,5 @@
-﻿using LibraryManagementSystem.Models;
+﻿using LibraryManagementSystem.DTOs;
+using LibraryManagementSystem.Models;
 
 namespace LibraryManagementSystem.Services
 {
@@ -49,8 +50,16 @@ namespace LibraryManagementSystem.Services
         public Book? GetById(int id) => _books.FirstOrDefault(b => b.Id == id);
 
         /// <inheritdoc />
-        public Book Add(Book book)
+        public Book Add(AddBookDTO bookDTO)
         {
+            var book = new Book
+            {
+                Title = bookDTO.Title,
+                AuthorId = bookDTO.AuthorId,
+                PublishedYear = bookDTO.PublishedYear,
+                ISBN = bookDTO.ISBN
+            };
+
             if (_books.Any(b => b.ISBN == book.ISBN))
             {
                 throw new InvalidOperationException("ISBN must be unique.");
@@ -69,8 +78,16 @@ namespace LibraryManagementSystem.Services
         }
 
         /// <inheritdoc />
-        public Book? Update(int id, Book book)
+        public Book? Update(int id, UpdateBookDTO bookDTO)
         {
+            var book = new Book
+            {
+                Title = bookDTO.Title,
+                AuthorId = bookDTO.AuthorId,
+                PublishedYear = bookDTO.PublishedYear,
+                ISBN = bookDTO.ISBN
+            };
+
             var existingBook = GetById(id);
 
             if (existingBook == null)

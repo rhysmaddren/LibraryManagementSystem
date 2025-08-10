@@ -1,4 +1,5 @@
-﻿using LibraryManagementSystem.Models;
+﻿using LibraryManagementSystem.DTOs;
+using LibraryManagementSystem.Models;
 using LibraryManagementSystem.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -60,17 +61,17 @@ namespace LibraryManagementSystem.Controllers
         /// <summary>
         /// Adds a new book.
         /// </summary>
-        /// <param name="book">The book object to add.</param>
+        /// <param name="bookDTO">The bookDTO object with new book details.</param>
         /// <returns>
         /// A 201 Created response containing the newly created book.
         /// Returns 400 Bad Request if validation fails.
         /// </returns>
         [HttpPost]
-        public ActionResult<Book> Add(Book book)
+        public ActionResult<Book> Add(AddBookDTO bookDTO)
         {
             try
             {
-                var createdBook = _bookService.Add(book);
+                var createdBook = _bookService.Add(bookDTO);
 
                 return CreatedAtAction(nameof(GetById), new { id = createdBook.Id }, createdBook);
             }
@@ -84,16 +85,16 @@ namespace LibraryManagementSystem.Controllers
         /// Updates the details of an existing book.
         /// </summary>
         /// <param name="id">The ID of the book to update.</param>
-        /// <param name="book">The updated book object.</param>
+        /// <param name="bookDTO">The updated book details.</param>
         /// <returns>
         /// The updated book if successful; otherwise, 404 Not Found or 400 Bad Request.
         /// </returns>
         [HttpPut("{id}")]
-        public ActionResult<Book> Update(int id, Book book)
+        public ActionResult<Book> Update(int id, UpdateBookDTO bookDTO)
         {
             try
             {
-                var updatedBook = _bookService.Update(id, book);
+                var updatedBook = _bookService.Update(id, bookDTO);
 
                 if (updatedBook == null)
                 {
