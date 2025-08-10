@@ -52,25 +52,17 @@ namespace LibraryManagementSystem.Services
         /// <inheritdoc />
         public Book Add(AddBookDTO bookDTO)
         {
-            var book = new Book
-            {
-                Title = bookDTO.Title,
-                AuthorId = bookDTO.AuthorId,
-                PublishedYear = bookDTO.PublishedYear,
-                ISBN = bookDTO.ISBN
-            };
-
-            if (_books.Any(b => b.ISBN == book.ISBN))
+            if (_books.Any(b => b.ISBN == bookDTO.ISBN))
             {
                 throw new InvalidOperationException("ISBN must be unique.");
             }
 
-            if (book.PublishedYear > DateTime.Now.Year)
+            if (bookDTO.PublishedYear > DateTime.Now.Year)
             {
                 throw new ArgumentException("Published year cannot be in the future.");
             }
 
-            book.Id = _nextId++;
+            var book = CreateBookFromAddBookDTO(bookDTO);
 
             _books.Add(book);
 
@@ -80,14 +72,6 @@ namespace LibraryManagementSystem.Services
         /// <inheritdoc />
         public Book? Update(int id, UpdateBookDTO bookDTO)
         {
-            var book = new Book
-            {
-                Title = bookDTO.Title,
-                AuthorId = bookDTO.AuthorId,
-                PublishedYear = bookDTO.PublishedYear,
-                ISBN = bookDTO.ISBN
-            };
-
             var existingBook = GetById(id);
 
             if (existingBook == null)
@@ -95,20 +79,20 @@ namespace LibraryManagementSystem.Services
                 return null;
             }
 
-            if (_books.Any(b => b.ISBN == book.ISBN && b.Id != id))
+            if (_books.Any(b => b.ISBN == bookDTO.ISBN && b.Id != id))
             {
                 throw new InvalidOperationException("ISBN must be unique.");
             }
 
-            if (book.PublishedYear > DateTime.Now.Year)
+            if (bookDTO.PublishedYear > DateTime.Now.Year)
             {
                 throw new ArgumentException("Published year cannot be in the future.");
             }
 
-            existingBook.Title = book.Title;
-            existingBook.AuthorId = book.AuthorId;
-            existingBook.PublishedYear = book.PublishedYear;
-            existingBook.ISBN = book.ISBN;
+            existingBook.Title = bookDTO.Title;
+            existingBook.AuthorId = bookDTO.AuthorId;
+            existingBook.PublishedYear = bookDTO.PublishedYear;
+            existingBook.ISBN = bookDTO.ISBN;
 
             return existingBook;
         }
@@ -121,11 +105,23 @@ namespace LibraryManagementSystem.Services
             if (book == null)
             {
                 return false;
-            } 
+            }
 
             _books.Remove(book);
 
             return true;
+        }
+
+        private Book CreateBookFromAddBookDTO(AddBookDTO bookDTO)
+        {
+            return new Book
+            {
+                Id = _nextId++,
+                Title = bookDTO.Title,
+                AuthorId = bookDTO.AuthorId,
+                PublishedYear = bookDTO.PublishedYear,
+                ISBN = bookDTO.ISBN
+            };
         }
     }
 }
