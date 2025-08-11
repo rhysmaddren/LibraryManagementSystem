@@ -1,5 +1,6 @@
 ﻿using LibraryManagementSystem.DTOs;
 using LibraryManagementSystem.Models;
+using LibraryManagementSystem.Properties;
 
 namespace LibraryManagementSystem.Services
 {
@@ -60,12 +61,12 @@ namespace LibraryManagementSystem.Services
         {
             if (_books.Any(b => b.ISBN == bookDTO.ISBN))
             {
-                throw new InvalidOperationException("ISBN must be unique.");
+                throw new InvalidOperationException(Resource.ISBNNotUniqueMessage);
             }
 
             if (bookDTO.PublishedYear > DateTime.Now.Year)
             {
-                throw new ArgumentException("Published year cannot be in the future.");
+                throw new ArgumentException(Resource.PublishedYearInFutureMessage);
             }
 
             var book = CreateBookFromAddBookDTO(bookDTO);
@@ -86,12 +87,12 @@ namespace LibraryManagementSystem.Services
 
             if (_books.Any(b => b.ISBN == bookDTO.ISBN && b.Id != id) && bookDTO.ISBN != existingBook.ISBN)
             {
-                throw new InvalidOperationException("ISBN must be unique.");
+                throw new InvalidOperationException(Resource.ISBNNotUniqueMessage);
             }
 
             if (bookDTO.PublishedYear > DateTime.Now.Year)
             {
-                throw new ArgumentException("Published year cannot be in the future.");
+                throw new ArgumentException(Resource.PublishedYearInFutureMessage);
             }
 
             existingBook.Title = bookDTO.Title;
