@@ -80,6 +80,27 @@ namespace LibraryManagementSystem.Tests.Services
         }
 
         [Fact]
+        public async Task UpdateAsync_ShouldUpdateBook_WhenISBNHasNotChanged()
+        {
+            var book = new Book { Id = 1, Title = "Old Title", AuthorId = 1, PublishedYear = 1990, ISBN = "old-isbn" };
+            var service = new BookService(new List<Book> { book });
+
+            var dto = new UpdateBookDTO
+            {
+                Title = "New Title",
+                AuthorId = 2,
+                PublishedYear = 1995,
+                ISBN = "old-isbn"
+            };
+
+            var updatedBook = await service.UpdateAsync(1, dto);
+
+            Assert.NotNull(updatedBook);
+            Assert.Equal("New Title", updatedBook!.Title);
+            Assert.Equal("old-isbn", updatedBook.ISBN);
+        }
+
+        [Fact]
         public async Task UpdateAsync_ShouldReturnNull_WhenBookNotFound()
         {
             var service = new BookService(new List<Book>());
