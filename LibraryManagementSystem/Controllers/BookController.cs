@@ -24,7 +24,10 @@ namespace LibraryManagementSystem.Controllers
         /// case-insensitive. If an invalid value is provided, no sorting is applied.</param>
         /// <returns>An <see cref="ActionResult{T}"/> containing an <see cref="IEnumerable{T}"/> of <see cref="Book"/> objects.</returns>
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Book>>> GetAll([FromQuery] string sortBy = "Title")
+        public async Task<ActionResult<IEnumerable<Book>>> GetAll(
+            [FromQuery] string sortBy = "Title",
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 5)
         {
             var books = await _bookService.GetAllAsync();
 
@@ -34,6 +37,10 @@ namespace LibraryManagementSystem.Controllers
                 "publishedyear" => books.OrderBy(b => b.PublishedYear),
                 _ => books
             };
+
+            books = books
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize);
 
             return Ok(books);
         }
