@@ -88,7 +88,7 @@ namespace LibraryManagementSystem.Services
                 return Task.FromResult<Book?>(null);
             }
 
-            if (_books.Any(b => b.ISBN == bookDTO.ISBN && b.Id != id))
+            if (_books.Any(b => b.ISBN == bookDTO.ISBN && b.Id != id) && bookDTO.ISBN != existingBook.ISBN)
             {
                 throw new InvalidOperationException("ISBN must be unique.");
             }
