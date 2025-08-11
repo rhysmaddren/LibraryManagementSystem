@@ -14,35 +14,31 @@ namespace LibraryManagementSystem.Services
         /// <summary>
         /// Initializes the <see cref="BookService"/> with demo data.
         /// </summary>
-        public BookService()
+        /// <param name="initialBooks">Optional initial books to populate the service with.</param>
+        /// <param name="startingId">The starting ID for the first book.</param>
+        public BookService(List<Book>? initialBooks = null, int startingId = 1)
         {
-            _books.AddRange(new List<Book>
+            _books = initialBooks ?? new List<Book>();
+
+            if (_books.Any())
             {
-                new Book
+                _nextId = _books.Max(b => b.Id) + 1;
+            }
+            else
+            { 
+                _nextId = startingId;
+            }
+
+            // Only add demo data if no initialBooks provided
+            if (initialBooks == null)
+            {
+                _books.AddRange(new List<Book>
                 {
-                    Id = _nextId++,
-                    Title = "The Fellowship of the Ring",
-                    AuthorId = 1,
-                    PublishedYear = 1954,
-                    ISBN = "978-0547928210"
-                },
-                new Book
-                {
-                    Id = _nextId++,
-                    Title = "The Two Towers",
-                    AuthorId = 1,
-                    PublishedYear = 1954,
-                    ISBN = "978-0547928203"
-                },
-                new Book
-                {
-                    Id = _nextId++,
-                    Title = "The Return of the King",
-                    AuthorId = 1,
-                    PublishedYear = 1955,
-                    ISBN = "978-0547928197"
-                }
-            });
+                    new Book { Id = _nextId++, Title = "The Fellowship of the Ring", AuthorId = 1, PublishedYear = 1954, ISBN = "978-0547928210" },
+                    new Book { Id = _nextId++, Title = "The Two Towers", AuthorId = 1, PublishedYear = 1954, ISBN = "978-0547928203" },
+                    new Book { Id = _nextId++, Title = "The Return of the King", AuthorId = 1, PublishedYear = 1955, ISBN = "978-0547928197" }
+                });
+            }
         }
 
         /// <inheritdoc />
