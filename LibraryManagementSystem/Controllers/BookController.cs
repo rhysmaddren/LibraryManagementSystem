@@ -24,9 +24,9 @@ namespace LibraryManagementSystem.Controllers
         /// case-insensitive. If an invalid value is provided, no sorting is applied.</param>
         /// <returns>An <see cref="ActionResult{T}"/> containing an <see cref="IEnumerable{T}"/> of <see cref="Book"/> objects.</returns>
         [HttpGet]
-        public ActionResult<IEnumerable<Book>> GetAll([FromQuery] string sortBy = "Title")
+        public async Task<ActionResult<IEnumerable<Book>>> GetAll([FromQuery] string sortBy = "Title")
         {
-            var books = _bookService.GetAll();
+            var books = await _bookService.GetAllAsync();
 
             books = sortBy.ToLower() switch
             {
@@ -46,33 +46,32 @@ namespace LibraryManagementSystem.Controllers
         /// The requested book if found; otherwise, a 404 Not Found response.
         /// </returns>
         [HttpGet("{id}")]
-        public ActionResult<Book> GetById(int id)
+        public async Task<ActionResult<Book>> GetById(int id)
         {
-            var book = _bookService.GetById(id);
+            var book = await _bookService.GetByIdAsync(id);
 
             if (book == null)
             {
                 return NotFound();
             }
-            
+
             return Ok(book);
         }
 
         /// <summary>
         /// Adds a new book.
         /// </summary>
-        /// <param name="bookDTO">The bookDTO object with new book details.</param>
+        /// <param name="bookDTO">The bookDTO object containing new book details.</param>
         /// <returns>
         /// A 201 Created response containing the newly created book.
         /// Returns 400 Bad Request if validation fails.
         /// </returns>
         [HttpPost]
-        public ActionResult<Book> Add(AddBookDTO bookDTO)
+        public async Task<ActionResult<Book>> Add(AddBookDTO bookDTO)
         {
             try
             {
-                var createdBook = _bookService.Add(bookDTO);
-
+                var createdBook = await _bookService.AddAsync(bookDTO);
                 return CreatedAtAction(nameof(GetById), new { id = createdBook.Id }, createdBook);
             }
             catch (Exception ex)
@@ -90,17 +89,17 @@ namespace LibraryManagementSystem.Controllers
         /// The updated book if successful; otherwise, 404 Not Found or 400 Bad Request.
         /// </returns>
         [HttpPut("{id}")]
-        public ActionResult<Book> Update(int id, UpdateBookDTO bookDTO)
+        public async Task<ActionResult<Book>> Update(int id, UpdateBookDTO bookDTO)
         {
             try
             {
-                var updatedBook = _bookService.Update(id, bookDTO);
+                var updatedBook = await _bookService.UpdateAsync(id, bookDTO);
 
                 if (updatedBook == null)
                 {
                     return NotFound();
                 }
-                
+
                 return Ok(updatedBook);
             }
             catch (Exception ex)
@@ -117,13 +116,13 @@ namespace LibraryManagementSystem.Controllers
         /// 204 No Content if the deletion is successful; otherwise, 404 Not Found.
         /// </returns>
         [HttpDelete("{id}")]
-        public IActionResult Delete(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            if (_bookService.Delete(id))
+            if (await _bookService.DeleteAsync(id))
             {
                 return NoContent();
             }
-           
+
             return NotFound();
         }
     }

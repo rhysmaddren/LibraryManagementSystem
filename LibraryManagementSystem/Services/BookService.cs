@@ -3,6 +3,9 @@ using LibraryManagementSystem.Models;
 
 namespace LibraryManagementSystem.Services
 {
+    /// <summary>
+    /// Provides an in-memory asynchronous implementation of <see cref="IBookService"/>.
+    /// </summary>
     public class BookService : IBookService
     {
         private readonly List<Book> _books = new();
@@ -13,7 +16,6 @@ namespace LibraryManagementSystem.Services
         /// </summary>
         public BookService()
         {
-            // Add demo data
             _books.AddRange(new List<Book>
             {
                 new Book
@@ -44,13 +46,21 @@ namespace LibraryManagementSystem.Services
         }
 
         /// <inheritdoc />
-        public IEnumerable<Book> GetAll() => _books;
+        public Task<IEnumerable<Book>> GetAllAsync()
+        {
+            return Task.FromResult<IEnumerable<Book>>(_books);
+        }
 
         /// <inheritdoc />
-        public Book? GetById(int id) => _books.FirstOrDefault(b => b.Id == id);
+        public Task<Book?> GetByIdAsync(int id)
+        {
+            var book = _books.FirstOrDefault(b => b.Id == id);
+
+            return Task.FromResult(book);
+        }
 
         /// <inheritdoc />
-        public Book Add(AddBookDTO bookDTO)
+        public Task<Book> AddAsync(AddBookDTO bookDTO)
         {
             if (_books.Any(b => b.ISBN == bookDTO.ISBN))
             {
@@ -63,20 +73,19 @@ namespace LibraryManagementSystem.Services
             }
 
             var book = CreateBookFromAddBookDTO(bookDTO);
-
             _books.Add(book);
 
-            return book;
+            return Task.FromResult(book);
         }
 
         /// <inheritdoc />
-        public Book? Update(int id, UpdateBookDTO bookDTO)
+        public Task<Book?> UpdateAsync(int id, UpdateBookDTO bookDTO)
         {
-            var existingBook = GetById(id);
+            var existingBook = _books.FirstOrDefault(b => b.Id == id);
 
             if (existingBook == null)
             {
-                return null;
+                return Task.FromResult<Book?>(null);
             }
 
             if (_books.Any(b => b.ISBN == bookDTO.ISBN && b.Id != id))
@@ -94,22 +103,22 @@ namespace LibraryManagementSystem.Services
             existingBook.PublishedYear = bookDTO.PublishedYear;
             existingBook.ISBN = bookDTO.ISBN;
 
-            return existingBook;
+            return Task.FromResult<Book?>(existingBook);
         }
 
         /// <inheritdoc />
-        public bool Delete(int id)
+        public Task<bool> DeleteAsync(int id)
         {
-            var book = GetById(id);
+            var book = _books.FirstOrDefault(b => b.Id == id);
 
             if (book == null)
             {
-                return false;
+                return Task.FromResult(false);
             }
 
             _books.Remove(book);
 
-            return true;
+            return Task.FromResult(true);
         }
 
         private Book CreateBookFromAddBookDTO(AddBookDTO bookDTO)
