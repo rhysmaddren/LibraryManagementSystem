@@ -1,6 +1,7 @@
 ﻿using LibraryManagementSystem.DTOs;
 using LibraryManagementSystem.Models;
 using LibraryManagementSystem.Properties;
+using LibraryManagementSystem.Repositories;
 
 namespace LibraryManagementSystem.Services
 {
@@ -9,57 +10,28 @@ namespace LibraryManagementSystem.Services
     /// </summary>
     public class BookService : IBookService
     {
-        private readonly List<Book> _books = new();
-        private int _nextId = 1;
+        private readonly IBookRepository _bookRepository;
 
         /// <summary>
         /// Initializes the <see cref="BookService"/> with demo data.
         /// </summary>
-        /// <param name="initialBooks">Optional initial books to populate the service with.</param>
-        /// <param name="startingId">The starting ID for the first book.</param>
-        public BookService(List<Book>? initialBooks = null, int startingId = 1)
+        /// <param name="bookRepository">The repository to use for book operations.</param>
+        public BookService(IBookRepository bookRepository)
         {
-            _books = initialBooks ?? new List<Book>();
-
-            if (_books.Any())
-            {
-                _nextId = _books.Max(b => b.Id) + 1;
-            }
-            else
-            { 
-                _nextId = startingId;
-            }
-
-            // Only add demo data if no initialBooks provided
-            if (initialBooks == null)
-            {
-                _books.AddRange(new List<Book>
-                {
-                    new Book { Id = _nextId++, Title = "The Fellowship of the Ring", AuthorId = 1, PublishedYear = 1954, ISBN = "978-0547928210" },
-                    new Book { Id = _nextId++, Title = "The Two Towers", AuthorId = 1, PublishedYear = 1954, ISBN = "978-0547928203" },
-                    new Book { Id = _nextId++, Title = "The Return of the King", AuthorId = 1, PublishedYear = 1955, ISBN = "978-0547928197" }
-                });
-            }
+            _bookRepository = bookRepository ?? throw new ArgumentNullException(nameof(bookRepository));
         }
 
         /// <inheritdoc />
-        public Task<IEnumerable<Book>> GetAllAsync()
-        {
-            return Task.FromResult<IEnumerable<Book>>(_books);
-        }
+        public Task<IEnumerable<Book>> GetAllAsync() => _bookRepository.GetAllAsync();
 
         /// <inheritdoc />
-        public Task<Book?> GetByIdAsync(int id)
-        {
-            var book = _books.FirstOrDefault(b => b.Id == id);
-
-            return Task.FromResult(book);
-        }
+        public Task<Book?> GetByIdAsync(int id) => _bookRepository.GetByIdAsync(id);
+    
 
         /// <inheritdoc />
-        public Task<Book> AddAsync(AddBookDTO bookDTO)
+        public async Task<Book> AddAsync(AddBookDTO bookDTO)
         {
-            if (_books.Any(b => b.ISBN == bookDTO.ISBN))
+            if (await _bookRepository.IsISBNUniqueAsync(bookDTO.ISBN))
             {
                 throw new InvalidOperationException(Resource.ISBNNotUniqueMessage);
             }
@@ -69,23 +41,23 @@ namespace LibraryManagementSystem.Services
                 throw new ArgumentException(Resource.PublishedYearInFutureMessage);
             }
 
-            var book = CreateBookFromAddBookDTO(bookDTO);
-            _books.Add(book);
+            var book = CreateBookWithoutIDFromAddBookDTO(bookDTO);
 
-            return Task.FromResult(book);
+            await _bookRepository.AddAsync(book);
+            return book;
         }
 
         /// <inheritdoc />
-        public Task<Book?> UpdateAsync(int id, UpdateBookDTO bookDTO)
+        public async Task<Book?> UpdateAsync(int id, UpdateBookDTO bookDTO)
         {
-            var existingBook = _books.FirstOrDefault(b => b.Id == id);
+            var existingBook = await _bookRepository.GetByIdAsync(id);
 
             if (existingBook == null)
             {
-                return Task.FromResult<Book?>(null);
+                return null;
             }
 
-            if (_books.Any(b => b.ISBN == bookDTO.ISBN && b.Id != id) && bookDTO.ISBN != existingBook.ISBN)
+            if (await _bookRepository.IsISBNUniqueAsync(bookDTO.ISBN) && bookDTO.ISBN != existingBook.ISBN)
             {
                 throw new InvalidOperationException(Resource.ISBNNotUniqueMessage);
             }
@@ -94,35 +66,24 @@ namespace LibraryManagementSystem.Services
             {
                 throw new ArgumentException(Resource.PublishedYearInFutureMessage);
             }
-
+                
             existingBook.Title = bookDTO.Title;
             existingBook.AuthorId = bookDTO.AuthorId;
             existingBook.PublishedYear = bookDTO.PublishedYear;
             existingBook.ISBN = bookDTO.ISBN;
 
-            return Task.FromResult<Book?>(existingBook);
+            await _bookRepository.UpdateAsync(existingBook);
+
+            return existingBook;
         }
 
         /// <inheritdoc />
-        public Task<bool> DeleteAsync(int id)
-        {
-            var book = _books.FirstOrDefault(b => b.Id == id);
+        public Task<bool> DeleteAsync(int id) => _bookRepository.DeleteAsync(id);
 
-            if (book == null)
-            {
-                return Task.FromResult(false);
-            }
-
-            _books.Remove(book);
-
-            return Task.FromResult(true);
-        }
-
-        private Book CreateBookFromAddBookDTO(AddBookDTO bookDTO)
+        private Book CreateBookWithoutIDFromAddBookDTO(AddBookDTO bookDTO)
         {
             return new Book
             {
-                Id = _nextId++,
                 Title = bookDTO.Title,
                 AuthorId = bookDTO.AuthorId,
                 PublishedYear = bookDTO.PublishedYear,

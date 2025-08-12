@@ -1,142 +1,175 @@
 ﻿using LibraryManagementSystem.DTOs;
 using LibraryManagementSystem.Models;
+using LibraryManagementSystem.Properties;
+using LibraryManagementSystem.Repositories;
 using LibraryManagementSystem.Services;
+using Moq;
 
 namespace LibraryManagementSystem.Tests.Services
 {
     public class BookServiceTests
     {
-        [Fact]
-        public async Task AddAsync_ShouldAddBook_WhenValid()
+        private readonly Mock<IBookRepository> _mockRepository;
+        private readonly BookService _bookService;
+
+        public BookServiceTests()
         {
-            var service = new BookService(new List<Book>(), startingId: 1);
+            _mockRepository = new Mock<IBookRepository>();
+            _bookService = new BookService(_mockRepository.Object);
+        }
+
+        [Fact]
+        public async Task GetAllAsync_ReturnsAllBooks()
+        {
+            var books = new List<Book> { new Book { Id = 1, Title = "Test Book" } };
+            _mockRepository.Setup(r => r.GetAllAsync()).ReturnsAsync(books);
+
+            var result = await _bookService.GetAllAsync();
+
+            Assert.Equal(books, result);
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_ReturnsBook_WhenBookExists()
+        {
+            var book = new Book { Id = 1, Title = "Test" };
+            _mockRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(book);
+
+            var result = await _bookService.GetByIdAsync(1);
+
+            Assert.Equal(book, result);
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_ReturnsNull_WhenBookDoesNotExist()
+        {
+            _mockRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync((Book?)null);
+
+            var result = await _bookService.GetByIdAsync(1);
+
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public async Task AddAsync_ThrowsInvalidOperationException_WhenISBNNotUnique()
+        {
+            var dto = new AddBookDTO { ISBN = "123", Title = "Title", AuthorId = 1, PublishedYear = 2020 };
+            _mockRepository.Setup(r => r.IsISBNUniqueAsync(dto.ISBN)).ReturnsAsync(true);
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _bookService.AddAsync(dto));
+            Assert.Equal(Resource.ISBNNotUniqueMessage, ex.Message);
+        }
+
+        [Fact]
+        public async Task AddAsync_ThrowsArgumentException_WhenPublishedYearInFuture()
+        {
             var dto = new AddBookDTO
             {
-                Title = "Test Book",
+                ISBN = "123",
+                Title = "Title",
                 AuthorId = 1,
-                PublishedYear = 2000,
-                ISBN = "unique-isbn"
+                PublishedYear = DateTime.Now.Year + 1
             };
+            _mockRepository.Setup(r => r.IsISBNUniqueAsync(dto.ISBN)).ReturnsAsync(false);
 
-            var addedBook = await service.AddAsync(dto);
-
-            Assert.Equal(1, addedBook.Id);
-            Assert.Equal(dto.Title, addedBook.Title);
-            Assert.Equal(dto.ISBN, addedBook.ISBN);
+            var ex = await Assert.ThrowsAsync<ArgumentException>(() => _bookService.AddAsync(dto));
+            Assert.Equal(Resource.PublishedYearInFutureMessage, ex.Message);
         }
 
         [Fact]
-        public async Task AddAsync_ShouldThrow_WhenISBNNotUnique()
+        public async Task AddAsync_AddsBook_WhenValid()
         {
-            var initialBooks = new List<Book> { new Book { Id = 1, ISBN = "same-isbn" } };
-            var service = new BookService(initialBooks);
+            var dto = new AddBookDTO { ISBN = "123", Title = "Title", AuthorId = 1, PublishedYear = 2020 };
+            _mockRepository.Setup(r => r.IsISBNUniqueAsync(dto.ISBN)).ReturnsAsync(false);
+            _mockRepository.Setup(r => r.AddAsync(It.IsAny<Book>())).Returns(Task.CompletedTask);
 
-            var dto = new AddBookDTO
-            {
-                Title = "Another Book",
-                AuthorId = 1,
-                PublishedYear = 2000,
-                ISBN = "same-isbn"
-            };
+            var result = await _bookService.AddAsync(dto);
 
-            await Assert.ThrowsAsync<InvalidOperationException>(() => service.AddAsync(dto));
+            _mockRepository.Verify(r => r.AddAsync(It.Is<Book>(b =>
+                b.ISBN == dto.ISBN &&
+                b.Title == dto.Title &&
+                b.AuthorId == dto.AuthorId &&
+                b.PublishedYear == dto.PublishedYear
+            )), Times.Once);
+
+            Assert.Equal(dto.ISBN, result.ISBN);
+            Assert.Equal(dto.Title, result.Title);
+            Assert.Equal(dto.AuthorId, result.AuthorId);
+            Assert.Equal(dto.PublishedYear, result.PublishedYear);
         }
 
         [Fact]
-        public async Task AddAsync_ShouldThrow_WhenPublishedYearInFuture()
+        public async Task UpdateAsync_ReturnsNull_WhenBookDoesNotExist()
         {
-            var service = new BookService(new List<Book>());
+            _mockRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync((Book?)null);
 
-            var dto = new AddBookDTO
-            {
-                Title = "Future Book",
-                AuthorId = 1,
-                PublishedYear = DateTime.Now.Year + 1,
-                ISBN = "unique-isbn"
-            };
+            var dto = new UpdateBookDTO { ISBN = "123", Title = "New Title", AuthorId = 2, PublishedYear = 2019 };
 
-            await Assert.ThrowsAsync<ArgumentException>(() => service.AddAsync(dto));
+            var result = await _bookService.UpdateAsync(1, dto);
+
+            Assert.Null(result);
         }
 
         [Fact]
-        public async Task UpdateAsync_ShouldUpdateBook_WhenValid()
+        public async Task UpdateAsync_ThrowsInvalidOperationException_WhenISBNNotUniqueAndChanged()
         {
-            var book = new Book { Id = 1, Title = "Old Title", AuthorId = 1, PublishedYear = 1990, ISBN = "old-isbn" };
-            var service = new BookService(new List<Book> { book });
+            var existingBook = new Book { Id = 1, ISBN = "111", Title = "Old Title", AuthorId = 1, PublishedYear = 2018 };
+            var dto = new UpdateBookDTO { ISBN = "123", Title = "New Title", AuthorId = 2, PublishedYear = 2019 };
 
-            var dto = new UpdateBookDTO
-            {
-                Title = "New Title",
-                AuthorId = 2,
-                PublishedYear = 1995,
-                ISBN = "new-isbn"
-            };
+            _mockRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(existingBook);
+            _mockRepository.Setup(r => r.IsISBNUniqueAsync(dto.ISBN)).ReturnsAsync(true); // ISBN not unique
 
-            var updatedBook = await service.UpdateAsync(1, dto);
-
-            Assert.NotNull(updatedBook);
-            Assert.Equal("New Title", updatedBook!.Title);
-            Assert.Equal("new-isbn", updatedBook.ISBN);
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _bookService.UpdateAsync(1, dto));
+            Assert.Equal(Resource.ISBNNotUniqueMessage, ex.Message);
         }
 
         [Fact]
-        public async Task UpdateAsync_ShouldUpdateBook_WhenISBNHasNotChanged()
+        public async Task UpdateAsync_ThrowsArgumentException_WhenPublishedYearInFuture()
         {
-            var book = new Book { Id = 1, Title = "Old Title", AuthorId = 1, PublishedYear = 1990, ISBN = "old-isbn" };
-            var service = new BookService(new List<Book> { book });
+            var existingBook = new Book { Id = 1, ISBN = "111", Title = "Old Title", AuthorId = 1, PublishedYear = 2018 };
+            var dto = new UpdateBookDTO { ISBN = "111", Title = "New Title", AuthorId = 2, PublishedYear = DateTime.Now.Year + 1 };
 
-            var dto = new UpdateBookDTO
-            {
-                Title = "New Title",
-                AuthorId = 2,
-                PublishedYear = 1995,
-                ISBN = "old-isbn"
-            };
+            _mockRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(existingBook);
+            _mockRepository.Setup(r => r.IsISBNUniqueAsync(dto.ISBN)).ReturnsAsync(false); // ISBN is unique or unchanged
 
-            var updatedBook = await service.UpdateAsync(1, dto);
-
-            Assert.NotNull(updatedBook);
-            Assert.Equal("New Title", updatedBook!.Title);
-            Assert.Equal("old-isbn", updatedBook.ISBN);
+            var ex = await Assert.ThrowsAsync<ArgumentException>(() => _bookService.UpdateAsync(1, dto));
+            Assert.Equal(Resource.PublishedYearInFutureMessage, ex.Message);
         }
 
         [Fact]
-        public async Task UpdateAsync_ShouldReturnNull_WhenBookNotFound()
+        public async Task UpdateAsync_UpdatesBook_WhenValid()
         {
-            var service = new BookService(new List<Book>());
+            var existingBook = new Book { Id = 1, ISBN = "111", Title = "Old Title", AuthorId = 1, PublishedYear = 2018 };
+            var dto = new UpdateBookDTO { ISBN = "111", Title = "New Title", AuthorId = 2, PublishedYear = 2019 };
 
-            var dto = new UpdateBookDTO
-            {
-                Title = "New Title",
-                AuthorId = 1,
-                PublishedYear = 2000,
-                ISBN = "new-isbn"
-            };
+            _mockRepository.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(existingBook);
+            _mockRepository.Setup(r => r.IsISBNUniqueAsync(dto.ISBN)).ReturnsAsync(false);
+            _mockRepository.Setup(r => r.UpdateAsync(existingBook)).Returns(Task.CompletedTask);
 
-            var updatedBook = await service.UpdateAsync(123, dto);
+            var result = await _bookService.UpdateAsync(1, dto);
 
-            Assert.Null(updatedBook);
+            _mockRepository.Verify(r => r.UpdateAsync(It.Is<Book>(b =>
+                b.Id == existingBook.Id &&
+                b.ISBN == dto.ISBN &&
+                b.Title == dto.Title &&
+                b.AuthorId == dto.AuthorId &&
+                b.PublishedYear == dto.PublishedYear
+            )), Times.Once);
+
+            Assert.Equal(dto.Title, result?.Title);
+            Assert.Equal(dto.AuthorId, result?.AuthorId);
+            Assert.Equal(dto.PublishedYear, result?.PublishedYear);
+            Assert.Equal(dto.ISBN, result?.ISBN);
         }
 
         [Fact]
-        public async Task DeleteAsync_ShouldReturnTrue_WhenBookDeleted()
+        public async Task DeleteAsync_DelegatesToRepository()
         {
-            var book = new Book { Id = 1, ISBN = "isbn" };
-            var service = new BookService(new List<Book> { book });
+            _mockRepository.Setup(r => r.DeleteAsync(1)).ReturnsAsync(true);
 
-            var result = await service.DeleteAsync(1);
+            var result = await _bookService.DeleteAsync(1);
 
             Assert.True(result);
-        }
-
-        [Fact]
-        public async Task DeleteAsync_ShouldReturnFalse_WhenBookNotFound()
-        {
-            var service = new BookService(new List<Book>());
-
-            var result = await service.DeleteAsync(1);
-
-            Assert.False(result);
         }
     }
 }
